@@ -1,0 +1,223 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>LCY Mobile - HZ</title>
+    <meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+    <meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <link href="css/jquery.mobile-1.4.5.min.css" rel="stylesheet" />
+    <link href="css/jqm-demos.css" rel="stylesheet" />
+    <link href="css/jquery-ui.min.css" rel="stylesheet">
+    <link href="css/jquery.comiseo.daterangepicker.css" rel="stylesheet">
+
+    <style>
+        .ui-btn-icon-left ui-icon-forward {
+            max-height: 30px;
+            max-width: 30px;
+            top: 50%;
+            margin-top: -15px;
+        }
+    </style>
+
+    <script src="js/jquery.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/jquery.mobile-1.4.5.min.js"></script>
+    <!-- <script src="js/jquery-ui.min.js"></script>
+    <script src="js/moment.js"></script>
+    <script src="js/jquery.comiseo.daterangepicker.min.js"></script>-->
+    <script src="js/Custom.js"></script>
+
+    <script type="text/javascript" src="cordova.js"></script>
+    <script type="text/javascript" src="cordova_plugins.js"></script>
+
+    <script>
+
+        //$.mobile.ajaxEnabled = false;
+        //$.mobile.ajaxLinksEnabled = false;
+
+        Date.prototype.yyyymmdd = function () {
+
+            var yyyy = this.getFullYear().toString();
+            var mm = (this.getMonth() + 1).toString(); // getMonth() is zero-based         
+            var dd = this.getDate().toString();
+            var hh = this.getHours().toString();
+            var ss = this.getSeconds().toString();
+
+
+            return yyyy + (mm[1] ? mm : "0" + mm[0]) + (dd[1] ? dd : "0" + dd[0]);
+        };
+
+        var uuid;
+        var env;
+        var app_version;
+
+        var fs;
+        var rootdir;
+       
+        function onDeviceReady() {
+
+            uuid = device.uuid;
+
+            window.localStorage.setItem("uuid", uuid);
+            $("#lbluuid").html(window.localStorage.getItem("uuid"));
+
+            cordova.getAppVersion(function (version) {
+                window.localStorage.setItem("app_version", version);
+                $("#lblenv").append("/" + window.localStorage.getItem("app_version"));
+                $("#lblenvtitle").append("/" + window.localStorage.getItem("app_version"));
+            });
+
+
+        }
+
+        function onLoad() {
+
+            document.addEventListener("deviceready", onDeviceReady, false);
+            //Gen left List
+            genleftlist();
+
+            env = window.localStorage.getItem("env");
+
+            //非PDA時，uuid為測試序號
+            uuid = "123456789012345";
+            window.localStorage.setItem("uuid", uuid);
+            $("#lbluuid").html(window.localStorage.getItem("uuid"));
+
+            if (env == null || env == 'null' || env == 'undefined' || env == '')
+                window.localStorage.setItem("env", "PRD");
+
+            $("#lblenv").html(window.localStorage.getItem("env"));
+            $("#lblenvtitle").html(window.localStorage.getItem("env"));
+
+
+            var size = 0;
+            for (i = 0; i <= localStorage.length - 1; i++) {
+                key = localStorage.key(i);
+                size += lengthInUtf8Bytes(localStorage.getItem(key));
+            }
+
+            var currentSize = Math.ceil((size / 1024 / 1024) * 100) / 100;
+
+            $("#lbllssize").html("目前暫存ROM："+currentSize + "M");
+
+           
+        }
+
+       
+        function lengthInUtf8Bytes(str) {
+            // Matches only the 10.. bytes that are non-initial characters in a multi-byte sequence.
+            var m = encodeURIComponent(str).match(/%[89ABab]/g);
+            return str.length + (m ? m.length : 0);
+        }
+
+        function goswiENV() {
+
+            window.localStorage.setItem("env", $("#selenv").val());
+            $("#lblenv").html(window.localStorage.getItem("env"));
+            $("#lblenvtitle").html(window.localStorage.getItem("env"));
+
+            $("#popupENV").popup("close");
+            window.location.href = "index.html";
+
+        }
+
+        function goswiENVcancel() {
+
+            $("#popupENV").popup("close");
+
+        }
+
+        $(document).ready(function () {
+
+            $("#swiENV").click(function () {
+                $("#popupENV").popup("open");
+            });
+
+        });
+
+        
+
+        
+
+
+
+    </script>
+
+</head>
+<body onload="onLoad()">
+    <div data-role="page" class="jqm-demos" id="page">
+
+        <div data-role="header" class="jqm-header">
+            <h2><a href="../" title="LCY Mobile">
+                <img src="img/jquery-logo_new.png" alt="LCY Mobility" /></a></h2>
+            <a href="#" class="jqm-navmenu-link ui-btn ui-btn-icon-notext ui-corner-all ui-icon-bars ui-nodisc-icon ui-alt-icon ui-btn-left">Menu</a>
+            <a href="#" class="ui-btn" id="lblenvtitle"></a>
+        </div>
+        <!-- /header -->
+
+        <div role="main" class="ui-content jqm-content" style="border: 0px solid red; padding-top: 5px; padding-bottom: 3px;">
+
+            <h2>LCY Mobile - HZ</h2>
+            <a id="swiENV" class="ui-alt-icon ui-btn ui-shadow ui-corner-all ui-icon-gear ui-btn-icon-left" href="#" data-ajax="false" style="font-weight: 600">切換環境</a>
+            <a class="ui-alt-icon ui-btn ui-shadow ui-corner-all ui-icon-bullets ui-btn-icon-left" href="sap_picklist_out.html" data-ajax="false" style="color: #156691; font-weight: 600">出貨作業清單(SAP)</a>
+            <a class="ui-alt-icon ui-btn ui-shadow ui-corner-all ui-icon-bullets ui-btn-icon-left" href="pda_picklist_out.html" data-ajax="false" style="color: #156691; font-weight: 600">出貨作業清單(PDA)</a>
+            <a class="ui-alt-icon ui-btn ui-shadow ui-corner-all ui-icon-refresh ui-btn-icon-left" href="sap_checklist.html" data-ajax="false" style="color: #156691; font-weight: 600">出貨作業重讀重載刪除(SAP)</a>
+            <a class="ui-alt-icon ui-btn ui-shadow ui-corner-all ui-icon-action ui-btn-icon-left" href="sap_movelist_out.html" data-ajax="false" style="color: #FA9100; font-weight: 600">新增儲格異動作業(SAP)</a>
+            <a class="ui-alt-icon ui-btn ui-shadow ui-corner-all ui-icon-action ui-btn-icon-left" href="pda_movelist_out.html" data-ajax="false" style="color: #FA9100; font-weight: 600">儲格異動作業(PDA)</a>
+            <a class="ui-alt-icon ui-btn ui-shadow ui-corner-all ui-icon-arrow-u-r ui-btn-icon-left" href="sap_dmovelist_out.html" data-ajax="false" style="color: #AA000A; font-weight: 600">新增調撥出庫作業(SAP)</a>
+            <a class="ui-alt-icon ui-btn ui-shadow ui-corner-all ui-icon-arrow-u-r ui-btn-icon-left" href="pda_dmovelist_out.html" data-ajax="false" style="color: #AA000A; font-weight: 600">調撥出庫作業(PDA)</a>
+            <a class="ui-alt-icon ui-btn ui-shadow ui-corner-all ui-icon-refresh ui-btn-icon-left" href="sap_checklist_dmovelist_out.html" data-ajax="false" style="color: #AA000A; font-weight: 600">調撥出庫作業重載刪除(SAP)</a>
+            <a class="ui-alt-icon ui-btn ui-shadow ui-corner-all ui-icon-arrow-d-l ui-btn-icon-left" href="sap_dmovelist_in.html" data-ajax="false" style="color: #32712D; font-weight: 600">新增調撥入庫作業(SAP)</a>
+            <a class="ui-alt-icon ui-btn ui-shadow ui-corner-all ui-icon-arrow-d-l ui-btn-icon-left" href="pda_dmovelist_in.html" data-ajax="false" style="color: #32712D; font-weight: 600">調撥入庫作業(PDA)</a>
+            <a class="ui-alt-icon ui-btn ui-shadow ui-corner-all ui-icon-refresh ui-btn-icon-left" href="sap_checklist_dmovelist_in.html" data-ajax="false" style="color: #32712D; font-weight: 600">調撥入庫作業重載刪除(SAP)</a>
+            <a class="ui-alt-icon ui-btn ui-shadow ui-corner-all ui-icon-power ui-btn-icon-left" href="#" onclick="exitFromApp();" data-ajax="false" style="background-color: #545454; color: white;">EXIT</a>
+        </div>
+        <!-- /content -->
+        <div data-role="panel" class="jqm-navmenu-panel" data-position="left" data-display="overlay" data-theme="a" id="left-panel">
+            <ul class="jqm-list ui-alt-icon ui-nodisc-icon">
+                <li data-role="" data-enhanced="true" data-collapsed-icon="carat-d" data-expanded-icon="carat-u" data-iconpos="right" data-inset="false" class="ui-collapsible ui-collapsible-themed-content ui-collapsible-collapsed">
+                    <h3 class="ui-collapsible-heading ui-collapsible-heading-collapsed">
+                        <a href="index.html" data-ajax="false" class="ui-collapsible-heading-toggle ui-btn ui-btn-icon-right ui-btn-inherit ui-icon-carat-d">LCY Mobile - HZ<span class="ui-collapsible-heading-status"> click to expand contents</span>
+                        </a>
+                        <a href="#" data-ajax="false" class="ui-collapsible-heading-toggle ui-btn ui-btn-icon-right ui-btn-inherit">環境/版本：<span id="lblenv"></span></a>
+                        <a href="#" data-ajax="false" class="ui-collapsible-heading-toggle ui-btn ui-btn-icon-right ui-btn-inherit">裝置：<span id="lbluuid"></span></a>
+                    </h3>
+                    <div class="ui-collapsible-content ui-body-inherit" aria-hidden="true">
+                        <ul id="ulleftlist">
+                        </ul>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        <!-- /panel -->
+
+
+        <div data-role="footer" data-position="fixed" data-tap-toggle="false" class="jqm-footer">
+            <p>暫存容量：<span id="lbllssize"></span></p>
+        </div>
+        <!-- /footer -->
+
+        <div data-role="popup" id="popupENV" data-dismissible="false" style="max-width: 400px;">
+            <div data-role="header">
+            </div>
+            <div role="main" class="ui-content">
+                <div class="ui-field-contain">
+                    <label for="select-native-1">請選擇環境：</label>
+                    <select name="select-native-1" id="selenv">
+                        <option value="PRD">PRD</option>
+                        <option value="QAS">QAS</option>
+                        <option value="DEV">DEV</option>
+                    </select>
+                </div>
+
+                <a href="#" onclick="goswiENVcancel()" class="ui-btn ui-corner-all ui-shadow ui-btn-inline">取消</a>
+                <a href="#" onclick="goswiENV()" class="ui-btn ui-corner-all ui-shadow ui-btn-inline">切換</a>
+
+            </div>
+        </div>
+        <!-- / popup window -->
+
+
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,542 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>LCY Mobile - HZ</title>
+    <meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+    <meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <link href="css/jquery.mobile-1.4.5.min.css" rel="stylesheet" />
+    <link href="css/jqm-demos.css" rel="stylesheet" />
+    <link href="css/jquery-ui.min.css" rel="stylesheet">
+    <link href="css/jquery.comiseo.daterangepicker.css" rel="stylesheet">
+
+    <style>
+        /*移除自訂欄位按鈕*/
+        .ui-table-columntoggle-btn {
+            display: none !important;
+        }
+    </style>
+
+    <script src="js/jquery.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/jquery.mobile-1.4.5.min.js"></script>
+    <script src="js/Custom.js"></script>
+    <script src="js/underscore-min.js"></script>
+    <script type="text/javascript" src="cordova.js"></script>
+    <script type="text/javascript" src="cordova_plugins.js"></script>
+
+    <script>
+
+        //$.mobile.ajaxEnabled = false;
+        //$.mobile.ajaxLinksEnabled = false;
+
+        Date.prototype.yyyymmdd = function () {
+
+            var yyyy = this.getFullYear().toString();
+            var mm = (this.getMonth() + 1).toString(); // getMonth() is zero-based
+            var dd = this.getDate().toString();
+            var hh = this.getHours().toString();
+            var ss = this.getSeconds().toString();
+
+
+            return yyyy + (mm[1] ? mm : "0" + mm[0]) + (dd[1] ? dd : "0" + dd[0]);
+        };
+
+        Date.prototype.yyyymmddhhMMss = function () {
+
+            var yyyy = this.getFullYear().toString();
+            var mm = (this.getMonth() + 1).toString(); // getMonth() is zero-based
+            var dd = this.getDate().toString();
+            var hh = this.getHours().toString();
+            var MM = this.getMinutes().toString();
+            var ss = this.getSeconds().toString();
+            var ms = this.getMilliseconds().toString();
+
+            return yyyy + (mm[1] ? mm : "0" + mm[0]) + (dd[1] ? dd : "0" + dd[0]) + (hh[1] ? hh : "0" + hh[0]) + (MM[1] ? MM : "0" + MM[0]) + (ss[1] ? ss : "0" + ss[0]);
+        };
+
+        var uuid;
+        var env;
+        var app_version;
+        var num;
+        var objJson;
+
+        function onDeviceReady() {
+
+        }
+
+        function onLoad() {
+            //init
+            init();
+
+            $("input[type='text']:first", document.forms[0]).focus();
+
+        }
+
+        function Handler_GetDlvList(vbeln, seqno) {
+            //清除列表
+            $('#tbdlvi tbody').empty();
+            //讀取資料
+            $.ajax({
+                type: "GET",
+                async: false,
+                timeout: 60000,
+                //url: "http://202.3.166.109/pdaweb/web%20site/sap_handler/HZ_PRD/loadDLV.ashx",
+                url: "http://pdaiis.lcygroup.com/pdaweb/web%20site/sap_handler/HZ_PRD/loadDLV.ashx",
+                contentType: "application/json",
+                dataType: 'json',
+                data: { env: env, vbeln: vbeln, seqno: seqno, ctype: "P" },
+                //data: '',
+                success: function (data) {
+
+                    //判斷是否有資料
+                    if (JSON.stringify(data).length > 12) {
+
+                        //一律先轉成json string
+                        objJson = jQuery.parseJSON(JSON.stringify(data).replace("{\"Table\":", "").slice(0, -1));
+
+                        //判斷是否為行動裝置 uuid
+                        if (uuid == null || uuid == 'null' || uuid == 'undefined' || uuid == '' || env == null || env == 'null' || env == 'undefined' || env == '') {
+                            alert("無法取得行動裝置序號或環境變數，頁面將移至首頁!!");
+                            window.location.href = "index.html";
+                        }
+                        else {
+
+                            var yyyymmdd = new Date().yyyymmdd();
+                            var yyyymmddhhMMss = new Date().yyyymmddhhMMss();
+
+                            $("#lblvbeln").html(vbeln + "-" + seqno);
+                            $("#lblnamer").html(objJson[0].NAMER);
+
+                            var row = "";
+                            num = 0;
+
+                            $.each(objJson, function (key, value) {
+
+                                num++;
+
+                                row += "<tr style=\"color:#3F51B5;\">";
+                                row += "<th>" + value.POSNR.substr(value.POSNR.length - 6) + "<br>" + value.MATNR + "</th>";
+                                row += "<th>" + value.LGORT + "</th>";
+                                row += "<th style=\"color:#F04848;\">" + value.LFIMG + "</th>";
+                                row += "<th>" + value.T_COUNT + "</th>";
+                                row += "<th><a href=\"#\" onclick=\"savels(\'" + value.VBELN + "\',\'" + value.SEQNO + "\',\'" + value.POSNR + "\',\'" + value.MATNR + "\',\'" + value.LGORT + "\',\'" + value.LFIMG + "\'); return false;\" class=\"ui-btn\" style=\"padding:10px 8px;background-color:#156AEC;color:white;text-shadow:0 0 0; \" id=\"btn" + num + "save\">揀貨</a></th>";
+                                row += "<th style=\"display:none\">" + value.VBELN + "/" + value.SEQNO + "/" + value.POSNR + "/" + value.MATNR + "/" + value.LGORT + "/" + value.LFIMG + "</th>"
+                                row += '</tr>';
+
+                                if (value.M_LFIMG != null) {
+                                    row += "<tr style=\"color:#3F51B5;\">";
+                                    row += "<th colspan=\"5\" style=\"color:#F04848;text-align:right\">跨倉已撿貨總量：" + value.M_LFIMG + "</th>";
+                                    row += '</tr>';
+                                }
+
+                            });
+
+                            //if (num > 0)
+                            //    $('#btnSaveToPDAAll').show();
+                            //else
+                            //    $('#btnSaveToPDAAll').hide();
+
+                            $('#tbdlvi tbody').append(row);
+                        }
+                    }
+                    else {
+                        var haveData = "0";
+
+                        if (localStorage.length > 0) {
+                            for (var i = 0; i < localStorage.length; i++) {
+
+                                var key = localStorage.key(i);
+
+
+                                if (key.indexOf("ZMM005T_H_PICK") >= 0) {
+                                    var str_vbeln = key.split("_");
+
+                                    if (str_vbeln[3].substr(-10) == vbeln && str_vbeln[4].substr(-2) == seqno) {
+                                        haveData = "1";
+                                    }
+                                }
+                            }
+
+                            if (haveData == "1") {
+                                alert('此出貨單所有項目已在PDA有資料，頁面將前往 - 出貨作業清單(PDA)');
+                                window.location.href = "pda_picklist_out.html";
+                            }
+
+                            else {
+                                alert('無此出貨單(SAP)');
+                            }
+                        }
+
+                    }
+                },
+                error: function () {
+                    //alert('網路下載 發生錯誤');
+                }
+            });
+
+        }
+
+        function Handler_SaveToPDA(vbeln, seqno, posnr, matnr, lgort, check) {
+
+            doPlay("pass", uuid);
+            alert("開始下載，請勿關閉視窗，或是回上一頁。");
+
+            $.ajax({
+                beforeSend: function () { $.mobile.loading('show'); }, //Show spinner
+                complete: function () { $.mobile.loading('hide'); }, //Hide spinner
+                type: "GET",
+                async: false,
+                timeout: 60000,
+                //url: "http://202.3.166.109/pdaweb/web%20site/sap_handler/HZ_PRD/loadDLV_S1.ashx",
+                url: "http://pdaiis.lcygroup.com/pdaweb/web%20site/sap_handler/HZ_PRD/loadDLV_S1.ashx",
+                contentType: "application/json",
+                dataType: 'json',
+                data: { env: env, vbeln: vbeln, seqno: seqno, posnr: posnr, matnr: matnr, lgort: lgort, ctype: "P" },
+                //data: '',
+                success: function (data) {
+
+                    //判斷是否有資料
+                    if (JSON.stringify(data).length > 12) {
+
+                        //一律先轉成json string
+                        var objJson = jQuery.parseJSON(JSON.stringify(data).replace("{\"Table\":", "").slice(0, -1));
+
+                        //判斷是否為行動裝置 uuid
+                        if (uuid == null || uuid == 'null' || uuid == 'undefined' || uuid == '' || env == null || env == 'null' || env == 'undefined' || env == '') {
+                            alert("無法取得行動裝置序號或環境變數，頁面將移至首頁!!");
+                            window.location.href = "index.html";
+                        }
+                        else {
+
+                            var yyyymmdd = new Date().yyyymmdd();
+                            //var yyyymmddhhMMss = new Date().yyyymmddhhMMss();
+
+                            Handler_insZMM005T_H(objJson[0].MANDT, objJson[0].WERKS, objJson[0].VBELN, objJson[0].SEQNO, objJson[0].POSNR, objJson[0].MATNR, objJson[0].LGORT, uuid, yyyymmdd, "P");
+
+                            var array_h = [];
+                            var array_i = [];
+                            var m_lfimg
+
+                            if (objJson[0].M_LFIMG == null)
+                                m_lfimg = "0";
+                            else
+                                m_lfimg = objJson[0].M_LFIMG;
+
+                            //本機出貨單主檔H
+                            array_h.push({
+                                MANDT: objJson[0].MANDT,
+                                WERKS: objJson[0].WERKS,
+                                VBELN: objJson[0].VBELN,
+                                SEQNO: objJson[0].SEQNO,
+                                POSNR: objJson[0].POSNR,
+                                MATNR: objJson[0].MATNR,
+                                LGORT: objJson[0].LGORT,
+                                ZCONNO: objJson[0].ZCONNO,
+                                ZSEALNO: objJson[0].ZSEALNO,
+                                ZTRANNO: objJson[0].ZTRANNO,
+                                ZCONNO: "",
+                                ZSEALNO: "",
+                                ZTRANNO: "",
+                                EXDAT: "",
+                                ZPDANO: uuid,
+                                ZSTS: "P",
+                                LFIMG: objJson[0].LFIMG, //出貨數量
+                                F_LFIMG: objJson[0].LFIMG, //已撿數量
+                                PNUM: objJson[0].PNUM, //板數
+                                F_PNUM: "", // 已撿板數
+                                PNUM_C: objJson[0].PNUM_C, //零包
+                                F_PNUM_C: "", //已撿零包
+                                M_LFIMG: m_lfimg, //跨倉已撿貨量
+                            });
+
+
+                            //本機出貨單比對檔/明細檔
+                            $.each(objJson, function (key, value) {
+                                array_i.push({
+                                    MANDT: value.MANDT,
+                                    VBELN: value.VBELN,
+                                    POSNR: value.POSNR,
+                                    PLTNO: value.PLTNO,
+                                    SPLTNO: value.SPLTNO,
+                                    MATNR: value.MATNR,
+                                    WERKS: value.WERKS,
+                                    CHARG: value.CHARG,
+                                    LGORT: value.LGORT,
+                                    LGPLA: value.LGPLA,
+                                    ZIDENT: value.ZIDENT,
+                                    VTWEG: value.VTWEG,
+                                    SEQNO: value.SEQNO,
+                                    PSTYV: value.PSTYV,
+                                    LFIMG: value.LFIMG,
+                                    MENGE: value.MENGE,
+                                    NTGEW: value.NTGEW,
+                                    GEWEI: value.GEWEI,
+                                    ZSOWEIGHT: value.ZSOWEIGHT,
+                                    WEIGHT: value.WEIGHT,
+                                    REMARK: value.REMARK,
+                                    NAMER: value.NAMER,
+                                    HSDAT: value.HSDAT,
+                                    PLQTY: value.PLQTY,
+                                    ZSTS: "", //狀態 P:已撿
+                                    ZPLSTS: "",//異動類型
+                                    ZLGPLA_N: "", //新儲格
+                                    ZMENGE_N: "", //出貨包數(整板/拆板後零包)
+                                    WEIGHT_N: "", //揀貨重量
+                                    ZPTIME: ""//揀貨時間
+                                });
+
+                            });
+
+                            window.localStorage.setItem(env + "_" + "ZMM005T_H_PICK" + objJson[0].VBELN + "_" + objJson[0].SEQNO + "_" + objJson[0].POSNR + "_" + objJson[0].MATNR + "_" + objJson[0].LGORT, JSON.stringify(array_h));
+                            //PDA-Detail改存到File .txt, WEB-一樣存到localStorage
+                            WriteData(env + "_" + "ZMM005T_I_PICK" + objJson[0].VBELN + "_" + objJson[0].SEQNO + "_" + objJson[0].POSNR + "_" + objJson[0].MATNR + "_" + objJson[0].LGORT + ".txt", JSON.stringify(array_i));
+
+                        }
+                    }
+                    else {
+                        if (check != "A") {
+                            alert('無此出貨單(SAP)');
+                        }
+                    }
+                },
+                error: function () {
+                    //alert('網路下載 發生錯誤');
+                }
+            });
+
+        }
+
+        function savels(vbeln, seqno, posnr, matnr, lgort, lfimg) {
+            $.ajax({
+                //url: "http://202.3.166.109/pdaweb/web%20site/",
+                url: "http://pdaiis.lcygroup.com/pdaweb/web%20site/",
+                type: "HEAD",
+                async: false,
+                timeout: 60000,
+                statusCode: {
+                    200: function (response) {
+                        Handler_SaveToPDA(vbeln, seqno, posnr, matnr, lgort);
+                    },
+                    400: function (response) {
+                        alert('網路異常');
+                        window.location.href = "index.html";
+                    },
+                    0: function (response) {
+                        alert('網路異常');
+                        window.location.href = "index.html";
+                    }
+                }
+            });
+        }
+
+        function Handler_insZMM005T_H(mandt, werks, vbeln, seqno, posnr, matnr, lgort, zpdano, exdat, zsts) {
+            $.ajax({
+                type: "GET",
+                async: false,
+                timeout: 60000,
+                //url: "http://202.3.166.109/pdaweb/web%20site/sap_handler/HZ_PRD/insZMM005T_H.ashx",
+                url: "http://pdaiis.lcygroup.com/pdaweb/web%20site/sap_handler/HZ_PRD/insZMM005T_H.ashx",
+                //contentType: "application/json; charset=utf-8",
+                //dataType: 'json',
+                data: { env: env, mandt: mandt, werks: werks, vbeln: vbeln, seqno: seqno, posnr: posnr, matnr: matnr, lgort: lgort, zpdano: zpdano, exdat: exdat, zsts: zsts },
+                //data: '',
+                success: function (data) {
+                },
+                error: function () {
+                    //alert('網路發生錯誤');
+                }
+            });
+
+        }
+
+        function WriteData(filename, str) {
+
+            if (uuid == "123456789012345") {
+                window.localStorage.setItem(filename.slice(0, -4), str);
+
+                alert("下載成功，頁面將前往 - 出貨作業清單(PDA)");
+                window.location.href = "pda_picklist_out.html";
+            }
+
+            else {
+                window.resolveLocalFileSystemURL(cordova.file.dataDirectory, function (dir) {
+                    dir.getFile(filename, { create: true }, function (file) {
+
+                        file.createWriter(function (fileWriter) {
+
+                            fileWriter.write(str);
+
+                            alert("下載成功，頁面將前往 - 出貨作業清單(PDA)");
+                            window.location.href = "pda_picklist_out.html";
+
+                        }, function (ex) {
+                            alert(ex.target.error.code, null, 'Ｅrror', 'OK');
+
+                        });
+                    });
+                });
+            }
+        }
+
+        function message1(str) {
+
+            alert(str, null, 'Info', 'OK');
+        }
+
+        $(document).ready(function () {
+
+            $("input[type='text']:first", document.forms[0]).focus();
+
+            $('#bc1').keypress(function (e) {
+                var key = e.which;
+                if (key == 13)  // the enter key code
+                {
+                    $("#btnsubmit").click();
+                    return false;
+                }
+            });
+
+            $("#btnsubmit").click(function () {
+                //清除狀態
+                $("#page").css("background-color", "");
+                $("#pError").hide();
+                $("#pError").html('');
+
+                var str_vbeln = $("#bc1").val();
+
+
+                //0.比對格式
+                if (str_vbeln.length != 12) {
+
+                    doPlay("error", uuid);
+
+                    $("#pError").show();
+                    $("#pError").html('條碼格式錯誤!!');
+                    $("#page").css("background-color", "#edb8b8");
+                }
+                else {
+                    Handler_GetDlvList(str_vbeln.substr(0, 10), str_vbeln.substr(10, 2));
+                }
+
+                $("#bc1").val('');
+                $("input[type='text']:first", document.forms[0]).focus();
+
+            });
+
+            $("#btnSaveToPDAAll").click(function () {
+
+                alert("開始下載!!請勿關閉視窗!!");
+
+                var num_a = 1;
+
+                $('#tbdlvi tbody tr').each(function () {
+                    var $tds = $(this).find('th');
+                    var str_vbeln = $tds.eq(5).text().split("/");
+                    Handler_SaveToPDA(str_vbeln[0], str_vbeln[1], str_vbeln[2], str_vbeln[3], str_vbeln[4], "A");
+                    alert("下載第" + num_a + "筆：" + "訂單：" + str_vbeln[0] + "序號：" + str_vbeln[1] + "項次：" + str_vbeln[2] + "物料：" + str_vbeln[3] + "倉別：" + str_vbeln[4]);
+                    num_a++;
+                });
+
+                alert("下載成功，頁面將前往 - 出貨作業清單(PDA)");
+                window.location.href = "pda_picklist_out.html";
+            })
+
+        });
+
+
+
+
+    </script>
+</head>
+<body onload="onLoad()">
+    <div data-role="page" class="jqm-demos" id="page">
+        <div data-role="header" class="jqm-header">
+            <h2>
+                <a href="../" title="LCY Mobile">
+                    <img src="img/jquery-logo_new.png" alt="LCY Mobile" />
+                </a>
+            </h2>
+            <a href="#" class="jqm-navmenu-link ui-btn ui-btn-icon-notext ui-corner-all ui-icon-bars ui-nodisc-icon ui-alt-icon ui-btn-left">Menu
+            </a>
+            <a href="#" class="ui-btn" id="lblenvtitle"></a>
+        </div>
+        <!-- /header -->
+        <div role="main" class="ui-content jqm-content" style="border: 0px solid red; padding-top: 5px; padding-bottom: 3px;">
+            <h2>出貨作業清單(SAP)
+            </h2>
+
+            <div>
+                <label for="search">掃描或直接輸入出貨單號：</label>
+                <input name="password" id="bc1" type="search" placeholder="掃描或直接輸入出貨單號" value="">
+                <a href="#" class="ui-btn" id="btnsubmit" style="background-color: #71BE4E; color: white; font-weight: 300; display: none;">送出</a>
+
+                <span id="pError" style="color: red; font-size: 30px; font-weight: 600; border: 2px solid red; display: none; margin-top: 10px;"></span>
+
+
+                <div class="ui-grid-a ui-responsive" style="color: #063C83; font-weight: 600; margin-bottom: 10px;">
+                    <div class="ui-block-a">
+                        <div class="ui-body ui-body-d" style="padding: 0px; font-size: 20px;">出貨單號：<span id="lblvbeln"></span></div>
+                    </div>
+                    <div class="ui-block-b">
+                        <div class="ui-body ui-body-d" style="padding: 0px; font-size: 20px;">客戶名稱：<span id="lblnamer"></span></div>
+                    </div>
+                </div>
+                <!-- /grid-a -->
+
+                <table data-role="table" id="tbdlvi" data-mode="columntoggle" class="ui-responsive table-stroke">
+                    <thead>
+                        <tr>
+                            <th>項次/產品</th>
+                            <th>倉別</th>
+                            <th>訂單<br>
+                                數量</th>
+                            <th>可出<br>
+                                板數</th>
+                            <th>揀貨</th>
+                        </tr>
+                    </thead>
+                    <tbody style="padding: 0px;"></tbody>
+                </table>
+
+                <a href="#" class="ui-btn" id="btnSaveToPDAAll" style="display: none; background-color: #71BE4E; color: white; font-weight: 100;">整批下載</a>
+
+
+
+            </div>
+            <!--/demo-html -->
+        </div>
+        <!-- /content -->
+        <div data-role="panel" class="jqm-navmenu-panel" data-position="left" data-display="overlay"
+            data-theme="a" id="left-panel">
+            <ul class="jqm-list ui-alt-icon ui-nodisc-icon">
+                <li data-role="" data-enhanced="true" data-collapsed-icon="carat-d" data-expanded-icon="carat-u"
+                    data-iconpos="right" data-inset="false" class="ui-collapsible ui-collapsible-themed-content ui-collapsible-collapsed">
+                    <h3 class="ui-collapsible-heading">
+                        <a href="index.html" data-ajax="false" class="ui-btn">LCY Mobile - HZ<span class="ui-collapsible-heading-status"> click to expand contents</span>
+                        </a>
+                        <a href="#" data-ajax="false" class="ui-btn">環境/版本：<span id="lblenv"></span></a>
+                        <a href="#" data-ajax="false" class="ui-btn">裝置：<span id="lbluuid"></span></a>
+                    </h3>
+                    <div class="ui-collapsible-content ui-body-inherit" aria-hidden="true">
+                        <ul id="ulleftlist">
+                        </ul>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        <!-- /panel -->
+
+        <!--<div data-role="footer" data-position="fixed" data-tap-toggle="false" class="jqm-footer">
+            <p>
+                Desing By LCY IT Department
+            </p>
+        </div>-->
+        <!-- /footer -->
+    </div>
+
+    <div id="loading" style="display: none;">
+        Loading....
+    </div>
+
+</body>
+</html>

@@ -1,0 +1,209 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>LCY Mobile - HZ</title>
+    <meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+    <meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <link href="css/jquery.mobile-1.4.5.min.css" rel="stylesheet" />
+    <link href="css/jqm-demos.css" rel="stylesheet" />
+    <link href="css/jquery-ui.min.css" rel="stylesheet">
+    <link href="css/jquery.comiseo.daterangepicker.css" rel="stylesheet">
+
+    <style>
+        .ui-btn:after {
+            background-color: #DD5044;
+        }
+    </style>
+
+    <script src="js/jquery.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/jquery.mobile-1.4.5.min.js"></script>
+    <script src="js/Custom.js"></script>
+    <script src="js/underscore-min.js"></script>
+    <script type="text/javascript" src="cordova.js"></script>
+    <script type="text/javascript" src="cordova_plugins.js"></script>
+
+    <script>
+
+        //$.mobile.ajaxEnabled = false;
+        //$.mobile.ajaxLinksEnabled = false;
+
+        var uuid;
+        var env;
+        var app_version;
+
+        function onDeviceReady() {
+
+        }
+
+        function onLoad() {
+            //init
+            init();
+            Handler_GetPDA_PickList();
+
+        }
+
+        $(document).ready(function () {
+
+        });
+
+        function Handler_GetPDA_PickList() {
+            //alert(env);
+            if (localStorage.length > 0) {
+                for (var i = 0; i < localStorage.length; i++) {
+
+                    var key = localStorage.key(i);
+                    var jsonS;
+
+                    if (key.indexOf(env + "_" + "ZMM005T_H_DMOVE") >= 0) {
+                        jsonS = jQuery.parseJSON(window.localStorage.getItem(localStorage.key(i)));
+                        $('#uldlvlist ul').append("<li><a href=\"#\" onclick='goPick(\"" + key + "\")'><h3>訂單：" + jsonS[0].VBELN + "-" + jsonS[0].SEQNO.substr(jsonS[0].SEQNO.length - 2) + "</h3><h3>項次：" + jsonS[0].POSNR + "</h3><h3>物料：" + jsonS[0].MATNR + "</h3><h3>倉位：" + jsonS[0].LGORT + "</h3><h3>訂單量：" + jsonS[0].LFIMG + "</h3></a><a href=\"#\" onclick='goDel(\"" + key + "\")' data-icon=\"delete\">Delete</a></li>");
+                        $('#uldlvlist ul').listview('refresh');
+                    }
+
+                }
+
+            }
+            else {
+                alert("此PDA無暫存調撥出庫清單");
+            }
+        }
+
+        function goPick(key) {
+
+            doPlay("pass", uuid);
+
+            $.ajax({
+                url: "pick_S1.html",
+                type: "HEAD",
+                timeout: 60000,
+                statusCode: {
+                    200: function (response) {
+                        alert("前往調撥出庫作業頁面");
+                        window.location.href = "pick_dmove_S1.html?key=" + key;
+                    },
+                    400: function (response) {
+                        alert('網路異常');
+                        window.location.href = "index.html";
+                    },
+                    0: function (response) {
+                        alert('網路異常');
+                        window.location.href = "index.html";
+                    }
+                }
+            });
+        }
+
+        function goDel(key) {
+
+            doPlay("pass", uuid);
+
+            $.ajax({
+                url: "index.html",
+                type: "HEAD",
+                timeout: 60000,
+                statusCode: {
+                    200: function (response) {
+                        window.localStorage.removeItem(key);
+                        //改為刪除檔案
+                        DeleteData(key.replace("ZMM005T_H_DMOVE", "ZMM005T_I_DMOVE") + ".txt");
+                    },
+                    400: function (response) {
+                        alert('網路異常');
+                        window.location.href = "index.html";
+                    },
+                    0: function (response) {
+                        alert('網路異常');
+                        window.location.href = "index.html";
+                    }
+                }
+            });
+
+
+        }
+
+        function DeleteData(filename) {
+            if (uuid == "123456789012345") {
+
+                window.localStorage.removeItem(filename.slice(0, -4));
+
+                alert("刪除成功!!");
+                window.location.href = "pda_dmovelist_out.html";
+            }
+            else {
+                window.resolveLocalFileSystemURL(cordova.file.dataDirectory, function (dir) {
+                    dir.getFile(filename, { create: false }, function (fileEntry) {
+                        fileEntry.remove(function (file) {
+
+                            alert("刪除成功!!");
+                            window.location.href = "pda_dmovelist_out.html";
+
+                        }, function () {
+                            alert("erreur suppression " + error.code);
+                        }, function () {
+                            alert("fichier n'existe pas");
+                        });
+                    });
+
+
+                });
+            }
+        }
+
+    </script>
+
+</head>
+<body onload="onLoad()">
+    <div data-role="page" class="jqm-demos" id="page">
+
+        <div data-role="header" class="jqm-header">
+            <h2><a href="../" title="LCY Mobile">
+                <img src="img/jquery-logo_new.png" alt="LCY Mobile" /></a></h2>
+            <a href="#" class="jqm-navmenu-link ui-btn ui-btn-icon-notext ui-corner-all ui-icon-bars ui-nodisc-icon ui-alt-icon ui-btn-left">Menu</a>
+            <a href="#" class="ui-btn" id="lblenvtitle"></a>
+        </div>
+        <!-- /header -->
+
+        <div role="main" class="ui-content jqm-content" style="border: 0px solid red; padding-top: 5px; padding-bottom: 3px;">
+
+            <h2>調撥出庫作業(PDA)</h2>
+            <p style="font-size: 14px;">本PDA所有待調撥出庫作業的清單，可以離線作業，並暫存調撥出庫作業。</p>
+            <div id="uldlvlist">
+                <ul data-role="listview" data-filter="true" data-filter-placeholder="Search ..." data-inset="true">
+                </ul>
+            </div>
+            <!--/demo-html -->
+
+        </div>
+        <!-- /content -->
+        <div data-role="panel" class="jqm-navmenu-panel" data-position="left" data-display="overlay"
+            data-theme="a" id="left-panel">
+            <ul class="jqm-list ui-alt-icon ui-nodisc-icon">
+                <li data-role="" data-enhanced="true" data-collapsed-icon="carat-d" data-expanded-icon="carat-u"
+                    data-iconpos="right" data-inset="false" class="ui-collapsible ui-collapsible-themed-content ui-collapsible-collapsed">
+                    <h3 class="ui-collapsible-heading">
+                        <a href="index.html" data-ajax="false" class="ui-btn">LCY Mobile - HZ<span class="ui-collapsible-heading-status"> click to expand contents</span>
+                        </a>
+                        <a href="#" data-ajax="false" class="ui-btn">環境/版本：<span id="lblenv"></span></a>
+                        <a href="#" data-ajax="false" class="ui-btn">裝置：<span id="lbluuid"></span></a>
+                    </h3>
+                    <div class="ui-collapsible-content ui-body-inherit" aria-hidden="true">
+                        <ul id="ulleftlist">
+                        </ul>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        <!-- /panel -->
+
+
+        <!-- <div data-role="footer" data-position="fixed" data-tap-toggle="false" class="jqm-footer">
+            <p>Desing By LCY IT Department</p>
+        </div>-->
+        <!-- /footer -->
+
+
+    </div>
+
+</body>
+</html>

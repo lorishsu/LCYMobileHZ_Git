@@ -1,0 +1,540 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>jQM Complex Demo</title>
+    <meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+    <meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <link href="css/jquery.mobile-1.4.5.min.css" rel="stylesheet" />
+    <link href="css/jqm-demos.css" rel="stylesheet" />
+    <link href="css/jquery-ui.min.css" rel="stylesheet">
+    <link href="css/jquery.comiseo.daterangepicker.css" rel="stylesheet">
+
+    <style>
+        .ui-btn:after {
+            background-color: #DD5044;
+        }
+        /*移除自訂欄位按鈕*/
+        .ui-table-columntoggle-btn {
+            display: none !important;
+        }
+    </style>
+
+    <script src="js/jquery.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/jquery.mobile-1.4.5.min.js"></script>
+    <script src="js/Custom.js"></script>
+    <script src="js/underscore-min.js"></script>
+    <script type="text/javascript" src="cordova.js"></script>
+    <script type="text/javascript" src="cordova_plugins.js"></script>
+
+    <script>
+
+        //$.mobile.ajaxEnabled = false;
+        //$.mobile.ajaxLinksEnabled = false;
+
+        var key, key_i;
+        var p_weight = 0; //訂單總重
+        var p_pnum = 0; //訂單總板數
+        var p_pnum_c = 0; //訂單總零包
+
+        var uuid;
+        var env;
+        var app_version;
+
+        var objJson_h, objJson_i;
+
+
+        Date.prototype.yyyymmdd = function () {
+
+            var yyyy = this.getFullYear().toString();
+            var mm = (this.getMonth() + 1).toString(); // getMonth() is zero-based         
+            var dd = this.getDate().toString();
+            var hh = this.getHours().toString();
+            var ss = this.getSeconds().toString();
+
+
+            return yyyy + (mm[1] ? mm : "0" + mm[0]) + (dd[1] ? dd : "0" + dd[0]);
+        };
+
+        function onDeviceReady() {
+            //PDA
+            ReadFileString(key_i + ".txt", message1);
+
+        }
+
+        function onLoad() {
+
+            //init
+            init();
+
+            //清除狀態
+            $("#page").css("background-color", "");
+            $("#pSuccess").hide();
+            $("#pSuccess").html('');
+
+
+            key = getUrlVars()["key"];
+            key_i = key.replace("ZMM005T_H_DMOVE", "ZMM005T_I_DMOVE");
+
+            objJson_h = jQuery.parseJSON(window.localStorage.getItem(key));
+
+            //WEB
+            ReadFileString(key_i + ".txt", message1);
+
+        }
+
+        $(document).ready(function () {
+
+            $("input[type='text']:first", document.forms[0]).focus();
+
+            $('#bc1').keypress(function (e) {
+                var key = e.which;
+                if (key == 13)  // the enter key code
+                {
+                    $("#btnsubmit").click();
+                    return false;
+                }
+            });
+
+            $("#btnsubmit").click(function () {
+
+                var check = 0;
+
+                $('#tbdlvg1 tbody').find("th.a").each(function (index) {
+                    if ($("#bc1").val() == $(this).html().trim()) {
+                        goPick(key, $("#bc1").val());
+                        check = 1;
+                        return false;
+                    }
+                });
+
+                if (check == 0) {
+                    alert('倉儲輸入錯誤!!');
+                    $("#bc1").val('');
+                    $("input[type='text']:first", document.forms[0]).focus();
+                }
+
+            });
+
+            $("#btnSaveToSAP").click(function () {
+
+                doPlay("pass", uuid);
+                alert("開始上傳，請勿關閉視窗，或是回上一頁。");
+
+                $.ajax({
+                    beforeSend: function () { $.mobile.loading('show'); }, //Show spinner
+                    complete: function () { $.mobile.loading('hide'); }, //Hide spinner
+                    url: "http://pdaiis.lcygroup.com/pdaweb/web%20site/",
+                    type: "HEAD",
+                    async: false,
+                    timeout: 60000,
+                    statusCode: {
+                        200: function (response) {
+
+                            $.each(objJson_i, function (k, value) {
+                                if (value.ZSTS == "P") {
+
+                                    var ZSTS = "F";
+                                    var ZPLSTS = "O";
+
+                                    var ZMENGE_N, WEIGHT_N;
+
+                                    if (value.ZMENGE_N == "")
+                                        ZMENGE_N = value.MENGE
+                                    else
+                                        ZMENGE_N = value.ZMENGE_N
+
+                                    if (value.WEIGHT_N == "")
+                                        WEIGHT_N = value.WEIGHT
+                                    else
+                                        WEIGHT_N = value.WEIGHT_N
+
+                                    Handler_insZMM005T_I(value.MANDT, value.WERKS, value.VBELN, value.SEQNO, value.POSNR, value.MATNR, value.PLTNO, value.SPLTNO, value.CHARG, ZSTS, ZPLSTS, value.LGORT, value.LGPLA, value.ZLGPLA_N, value.MENGE, ZMENGE_N, value.WEIGHT, value.GEWEI, WEIGHT_N, value.ZLGORT_I, uuid);
+                                }
+                            });
+
+                            Handler_updZMM005T_H(objJson_h[0].MANDT, objJson_h[0].WERKS, objJson_h[0].VBELN, objJson_h[0].SEQNO, objJson_h[0].POSNR, objJson_h[0].MATNR, objJson_h[0].LGORT, "F", objJson_h[0].ZLGORT_I);
+
+                            doPlay("pass", uuid);
+
+                        },
+                        400: function (response) {
+                            alert('網路異常,無法上傳，請至網路收訊良好處，再執行一次上傳');
+                        },
+                        0: function (response) {
+                            alert('網路異常,無法上傳，請至網路收訊良好處，再執行一次上傳');
+                        }
+                    }
+                });
+
+            });
+
+
+            $("#btnCancel").click(function () {
+                window.location.href = "pda_dmovelist_out.html";
+            });
+
+        });
+
+        function updateall() {
+            var row_h1 = "";
+            var row_h2 = "";
+            var row_i = "";
+            var row_g1 = "";
+
+            //列出表頭1
+            row_h1 += "<tr>";
+            row_h1 += "<th>" + objJson_h[0].VBELN.replace(/^0+/, '') + "-" + objJson_h[0].SEQNO.substr(objJson_h[0].SEQNO.length - 2) + "</th>";
+            row_h1 += "<th style=\"font-size:10px;\">" + objJson_h[0].POSNR.substr(objJson_h[0].POSNR.length - 6) + "</th>";
+            row_h1 += "<th>" + objJson_h[0].MATNR + "</th>";
+            row_h1 += "<th style=\"font-size: 20px; color: #1BA261;\">" + objJson_h[0].LGORT + "</th>";
+            row_h1 += '</tr>';
+
+            $('#tbdlvh1 tbody').append(row_h1);
+
+            //列出表頭2
+            //重新計算重量/板數/零包(本訂單)
+            var tp_weight = 0; //總重
+            var tp_pnum = 0; //總板數
+            var tp_pnum_c = 0; //總零包
+
+            $.each(objJson_i, function (k, value) {
+                if (value.ZSTS == 'P') {
+
+                    if (value.WEIGHT_N == '') {
+                        tp_weight = tp_weight + value.WEIGHT;
+                        if (value.SPLTNO == '00') {
+                            tp_pnum = tp_pnum + 1;
+                        }
+                        else {
+                            tp_pnum_c = parseInt(tp_pnum_c) + parseInt(value.MENGE);
+                        }
+                    }
+                    else {
+                        tp_weight = tp_weight + value.WEIGHT_N;
+                        tp_pnum_c = parseInt(tp_pnum_c) + parseInt(value.ZMENGE_N);
+                    }
+                }
+            });
+
+            $('#tbdlvh2 tbody').empty();
+
+
+            row_h2 += "<tr>";
+            row_h2 += "<th style=\"color: #AA000A\"><span style=\"color: #1BA261\">" + tp_weight + "</span> / " + objJson_h[0].LFIMG + "</th>";
+            row_h2 += "<th style=\"color: #AA000A\"><span style=\"color: #1BA261\">" + tp_pnum + "</span> / " + objJson_h[0].PNUM + "</th>";
+            row_h2 += "<th style=\"color: #AA000A\"><span style=\"color: #1BA261\">" + tp_pnum_c + "</span> / " + objJson_h[0].PNUM_C + "</th>";
+            row_h2 += '</tr>';
+
+            $('#tbdlvh2 tbody').append(row_h2);
+
+
+            if (tp_weight > 0 || tp_pnum_c > 0)
+                $("#btnSaveToSAP").show();
+            else
+                $("#btnSaveToSAP").hide();
+
+            //alert(objJson_i);
+            //alert(JSON.stringify(objJson_i));
+
+            //本機出貨單主檔G1 By 所有儲格
+            var objJson_g1 = _.chain(objJson_i)
+                .groupBy("LGPLA")
+                .map(function (value, key) {
+                    return {
+                        LGPLA: key,
+                        T_COUNT: value.length // 可撿板數
+                    }
+                })
+                .value();
+
+            //alert(JSON.stringify(objJson_g1));
+
+            //列出所有儲位
+            var row_g = "";
+            var p_weight = 0;
+            var p_pnum = 0;
+            var p_weight = 0;
+
+            $.each(objJson_g1, function (k, value) {
+                //alert(value.LGPLA);
+                row_g += "<tr style=\"line-height: 0px;\">";
+                row_g += "<th  class=\"a\">" + value.LGPLA + "</th>";
+                row_g += "<th>" + value.T_COUNT + "</th>";
+
+                p_weight = 0;
+                p_pnum = 0;
+                p_pnum_c = 0;
+
+                $.each(objJson_i, function (k, v) {
+                    if (value.LGPLA == v.ZLGPLA_N && v.ZSTS == 'P') {
+                        if (v.WEIGHT_N == '') {
+                            p_weight = p_weight + v.WEIGHT;
+                            if (v.SPLTNO == '00') {
+                                p_pnum = p_pnum + 1;
+                            }
+                            else {
+                                p_pnum_c = parseInt(p_pnum_c) + parseInt(v.MENGE);
+                            }
+                        }
+                        else {
+                            p_weight = p_weight + v.WEIGHT_N;
+                            p_pnum_c = parseInt(p_pnum_c) + parseInt(v.ZMENGE_N);
+                        }
+
+                    }
+                })
+
+                row_g += "<th>" + p_weight + "</th>";
+                row_g += "<th>" + p_pnum + "</th>";
+                row_g += "<th>" + p_pnum_c + "</th>";
+                row_g += "<th><a href=\"#\" onclick='goPick(\"" + key + "\",\"" + value.LGPLA + "\")' class=\"ui-btn\" style=\"padding:10px 8px;background-color:#156AEC;color:white;text-shadow:0 0 0; margin:0px;\">揀貨</a></th>";
+
+                row_g += '</tr>';
+            });
+
+            $('#tbdlvg1 tbody').append(row_g);
+
+            //列出跨倉已撿數量
+            if (objJson_h[0].LFIMG != "0")
+                $('#lblmlfimg').html(" (它倉己收數量：" + objJson_h[0].M_LFIMG + ")");
+        }
+
+        function goPick(key, lgpla) {
+
+            doPlay("pass", uuid);
+
+            $.ajax({
+                url: "pick_dmove_S2.html",
+                type: "HEAD",
+                timeout: 60000,
+                statusCode: {
+                    200: function (response) {
+                        alert("前往撿貨頁面(儲格)");
+                        window.location.href = "pick_dmove_S2.html?key=" + key + "&lgpla=" + lgpla;
+                    },
+                    400: function (response) {
+                        alert('網路異常');
+                        window.location.href = "index.html";
+                    },
+                    0: function (response) {
+                        alert('網路異常');
+                        window.location.href = "index.html";
+                    }
+                }
+            });
+        }
+
+        function Handler_insZMM005T_I(mandt, werks, vbeln, seqno, posnr, matnr, pltno, spltno, charg, zsts, zplsts, lgort, lgpla, zlgpla_n, menge, zmenge_n, weight, gewei, weight_n, zlgort_i, zpdano) {
+            //alert(mandt + " /" + werks + " /" + vbeln + " /" + seqno + " /" + posnr + " /" + matnr + " /" + pltno + " /" + spltno + " /" + charg + " /" + zsts + " /" + zplsts + " /" + lgort + " /" + lgpla + " /" + zlgpla_n + " /" + menge + " /" + zmenge_n + " /" + weight + " /" + gewei + " /" + weight_n + " /" + zlgort_i);
+            $.ajax({
+                type: "GET",
+                async: false,
+                timeout: 60000,
+                url: "http://pdaiis.lcygroup.com/pdaweb/web%20site/sap_handler/HZ_PRD/insZMM005T_DMOVE_OUT_I.ashx",
+                //contentType: "application/json; charset=utf-8",
+                //dataType: 'json',
+                data: { env: env, mandt: mandt, werks: werks, vbeln: vbeln, seqno: seqno, posnr: posnr, matnr: matnr, pltno: pltno, spltno: spltno, charg: charg, zsts: zsts, zplsts: zplsts, lgort: lgort, lgpla: lgpla, zlgpla_n: zlgpla_n, menge: menge, zmenge_n: zmenge_n, weight: weight, gewei: gewei, weight_n: weight_n, zlgort_i: zlgort_i, zpdano: zpdano },
+                //data: '',
+                success: function (data) {
+                },
+                error: function () {
+                    //alert('上傳發生錯誤!! ' + sernr);
+                }
+            });
+
+        }
+
+        function Handler_updZMM005T_H(mandt, werks, vbeln, seqno, posnr, matnr, lgort, zsts, zlgort_i) {
+            //alert(mandt + '-' + werks + '-' + vbeln + '-' + seqno + '-' + posnr + '-' + matnr + '-' + lgort + '-' + zsts + '-' + zconno + '-' + zsealno + '-' + ztranno);
+            $.ajax({
+                type: "GET",
+                async: false,
+                timeout: 60000,
+                url: "http://pdaiis.lcygroup.com/pdaweb/web%20site/sap_handler/HZ_PRD/updZMM005T_DMOVE_OUT_H.ashx",
+                //contentType: "application/json; charset=utf-8",
+                //dataType: 'json',
+                data: { env: env, mandt: mandt, werks: werks, vbeln: vbeln, seqno: seqno, posnr: posnr, matnr: matnr, lgort: lgort, zsts: zsts, zlgort_i: zlgort_i },
+                //data: '',
+                success: function (data) {
+                    localStorage.removeItem(key);
+                    //localStorage.removeItem(key_i);
+                    //改為刪除檔案
+                    DeleteData(key_i + ".txt");
+                },
+                error: function () {
+                    alert('更新主檔發生錯誤!!');
+                }
+            });
+
+        }
+
+        function ReadFileString(filename, succFunc) {
+            if (uuid == "123456789012345") {
+
+                if (window.localStorage.getItem(key_i) != "")
+                    objJson_i = jQuery.parseJSON(window.localStorage.getItem(key_i));
+
+                updateall();
+            }
+            else {
+                window.resolveLocalFileSystemURL(cordova.file.dataDirectory, function (dir) {
+                    dir.getFile(filename, { create: true }, function (fileObject) {
+                        fileObject.file(function (file) {
+                            var reader = new FileReader();
+                            reader.onloadend = function (e) {
+                                //將暫存檔存至本頁陣列中。
+                                objJson_i = jQuery.parseJSON(this.result);
+                                updateall();
+                            };
+                            reader.readAsText(file);
+                        }, function (ex) {
+                            alert(ex.target.error.code, null, 'Ｅrror', 'OK');
+
+                        });
+                    });
+                });
+            }
+        }
+
+        function DeleteData(filename) {
+
+            if (uuid == "123456789012345") {
+
+                localStorage.removeItem(key_i);
+
+                alert("上傳成功!! 頁面將前往主選單。");
+                window.location.href = "index.html";
+            }
+            else {
+                window.resolveLocalFileSystemURL(cordova.file.dataDirectory, function (dir) {
+                    dir.getFile(filename, { create: false }, function (fileEntry) {
+                        fileEntry.remove(function (file) {
+
+                            alert("上傳成功!! 頁面將前往主選單。");
+                            window.location.href = "index.html";
+
+                        }, function () {
+                            alert("erreur suppression " + error.code);
+                        }, function () {
+                            alert("fichier n'existe pas");
+                        });
+                    });
+                });
+            }
+        }
+
+        function message1(str) {
+
+            alert(str, null, 'Info', 'OK');
+        }
+
+
+    </script>
+
+</head>
+<body onload="onLoad()">
+    <div data-role="page" class="jqm-demos" id="page">
+
+        <div data-role="header" class="jqm-header">
+            <h2><a href="../" title="LCY Mobile">
+                <img src="img/jquery-logo_new.png" alt="LCY Mobile" /></a></h2>
+            <a href="#" class="jqm-navmenu-link ui-btn ui-btn-icon-notext ui-corner-all ui-icon-bars ui-nodisc-icon ui-alt-icon ui-btn-left">Menu</a>
+            <!--<a href="#" class="jqm-search-link ui-btn ui-btn-icon-notext ui-corner-all ui-icon-search ui-nodisc-icon ui-alt-icon ui-btn-right">Search</a>-->
+        </div>
+        <!-- /header -->
+
+        <div role="main" class="ui-content jqm-content" style="border: 0px solid red; padding-top: 5px; padding-bottom: 3px;">
+
+            <div class="jqm-block-content" style="margin: 0px; padding: 0px;">
+                <h3>調撥單撿貨中(PDA) - 儲格選擇</h3>
+
+                <label for="search">掃描或直接輸入儲格：</label>
+                <input name="password" id="bc1" type="search" placeholder="掃描或直接輸入儲格" value="">
+                <a href="#" class="ui-btn" id="btnsubmit" style="background-color: #71BE4E; color: white; font-weight: 300; display: none;">送出</a>
+
+                <table data-role="table" id="tbdlvh1" data-mode="columntoggle" class="ui-responsive table-stroke" style="font-size: 16px; padding: 0px;">
+                    <thead style="padding: 0px; line-height: 0px; font-size: 12px;">
+                        <tr>
+                            <th>訂單</th>
+                            <th>項次</th>
+                            <th>產品</th>
+                            <th>倉別</th>
+                        </tr>
+                    </thead>
+                    <tbody style="padding: 0px; color: #0C608C;"></tbody>
+                </table>
+                <table data-role="table" id="tbdlvh2" data-mode="columntoggle" class="ui-responsive table-stroke" style="font-size: 16px; padding: 0px;">
+                    <thead style="padding: 0px; line-height: 0px; font-size: 12px;">
+                        <tr>
+                            <th>數量</th>
+                            <th>板數</th>
+                            <th>零包</th>
+                        </tr>
+                    </thead>
+                    <tbody style="padding: 0px; color: #0C608C;">
+                    </tbody>
+                </table>
+
+            </div>
+
+            <span id="pSuccess" class="blink" style="color: #2C9000; font-size: 24px; font-weight: 600; display: none;"></span>
+
+
+            <a href="#" class="ui-btn" id="btnSaveToSAP" style="display: none; background-color: #71BE4E; color: white; font-weight: 100; text-shadow: none;">送出存檔(SAP)</a>
+            <a href="#" class="ui-btn" id="btnCancel" style="background-color: #808080; color: white; font-weight: 100; text-shadow: none;">回調撥出庫作業(PDA)</a>
+
+            <table data-role="table" id="tbdlvg1" data-mode="columntoggle" class="ui-responsive table-stroke" style="font-size: 16px; padding: 0px;">
+                <thead>
+                    <tr style="color: #0C608C; line-height: 0px; font-size: 14px;">
+                        <th>儲格</th>
+                        <th>可出<br>
+                            板數</th>
+                        <th>已撿<br>
+                            數量</th>
+                        <th>已撿<br>
+                            板數</th>
+                        <th>已撿<br>
+                            零包</th>
+                        <th>揀貨</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+
+
+        </div>
+
+        <div data-role="panel" class="jqm-navmenu-panel" data-position="left" data-display="overlay"
+            data-theme="a" id="left-panel">
+            <ul class="jqm-list ui-alt-icon ui-nodisc-icon">
+                <li data-role="" data-enhanced="true" data-collapsed-icon="carat-d" data-expanded-icon="carat-u"
+                    data-iconpos="right" data-inset="false" class="ui-collapsible ui-collapsible-themed-content ui-collapsible-collapsed">
+                    <h3 class="ui-collapsible-heading">
+                        <a href="index.html" data-ajax="false" class="ui-btn">LCY Mobile - HZ<span class="ui-collapsible-heading-status"> click to expand contents</span>
+                        </a>
+                        <a href="#" data-ajax="false" class="ui-btn">環境/版本：<span id="lblenv"></span></a>
+                        <a href="#" data-ajax="false" class="ui-btn">裝置：<span id="lbluuid"></span></a>
+                    </h3>
+                    <div class="ui-collapsible-content ui-body-inherit" aria-hidden="true">
+                        <ul id="ulleftlist">
+                        </ul>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        <!-- /panel -->
+
+
+        <!--<div data-role="footer" data-position="fixed" data-tap-toggle="false" class="jqm-footer">
+            <p>Desing By LCY IT Department</p>
+        </div>-->
+        <!-- /footer -->
+
+
+    </div>
+
+
+
+</body>
+</html>

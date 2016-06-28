@@ -1,0 +1,1079 @@
+﻿<!DOCTYPE html>
+<html>
+<head>
+    <title>jQM Complex Demo</title>
+    <meta http-equiv='Content-Type' content='text/html; charset=utf-8' />
+    <meta name='viewport' content='width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no' />
+    <link href="css/jquery.mobile-1.4.5.min.css" rel="stylesheet" />
+    <link href="css/jqm-demos.css" rel="stylesheet" />
+    <link href="css/jquery-ui.min.css" rel="stylesheet">
+    <link href="css/jquery.comiseo.daterangepicker.css" rel="stylesheet">
+    <link href="css/real-world.css" rel="stylesheet" />
+
+    <style>
+        .ui-btn:after {
+            background-color: #DD5044;
+        }
+        /*移除自訂欄位按鈕*/
+        .ui-table-columntoggle-btn {
+            display: none !important;
+        }
+    </style>
+
+    <script src="js/jquery.js"></script>
+    <script src="js/index.js"></script>
+    <script src="js/jquery.mobile-1.4.5.min.js"></script>
+    <script src="js/Custom.js"></script>
+    <script src="js/underscore-min.js"></script>
+    <script type="text/javascript" src="cordova.js"></script>
+    <script type="text/javascript" src="cordova_plugins.js"></script>
+
+    <script>
+
+        //$.mobile.ajaxEnabled = false;
+        //$.mobile.ajaxLinksEnabled = false;
+
+        var key, key_i, lgpla;
+        var objJson_h, objJson_i;
+
+        var uuid;
+        var env;
+        var app_version;
+
+        var p_weight = 0; //訂單總重
+        var p_pnum = 0; //訂單總板數
+        var p_pnum_c = 0; //訂單總零包
+
+        var tp_weight = 0; //本倉總重
+        var tp_pnum = 0; //本倉總板數
+        var tp_pnum_c = 0; //本倉總零包
+
+        Date.prototype.yyyymmdd = function () {
+
+            var yyyy = this.getFullYear().toString();
+            var mm = (this.getMonth() + 1).toString(); // getMonth() is zero-based         
+            var dd = this.getDate().toString();
+            var hh = this.getHours().toString();
+            var ss = this.getSeconds().toString();
+
+
+            return yyyy + (mm[1] ? mm : "0" + mm[0]) + (dd[1] ? dd : "0" + dd[0]);
+        };
+
+        Date.prototype.yyyymmddhhMMss = function () {
+
+            var yyyy = this.getFullYear().toString();
+            var mm = (this.getMonth() + 1).toString(); // getMonth() is zero-based
+            var dd = this.getDate().toString();
+            var hh = this.getHours().toString();
+            var MM = this.getMinutes().toString();
+            var ss = this.getSeconds().toString();
+            var ms = this.getMilliseconds().toString();
+
+            return yyyy + (mm[1] ? mm : "0" + mm[0]) + (dd[1] ? dd : "0" + dd[0]) + (hh[1] ? hh : "0" + hh[0]) + (MM[1] ? MM : "0" + MM[0]) + (ss[1] ? ss : "0" + ss[0]);
+        };
+
+        function onDeviceReady() {
+            //PDA
+            ReadFileString(key_i + ".txt", message1);
+        }
+
+        function onLoad() {
+
+            //init
+            init();
+            document.addEventListener("backbutton", onBackKeyDown, false);
+
+            //清除狀態
+            $("#page").css("background-color", "");
+            $("#pError").hide();
+            $("#pError").html('');
+            $("#pSuccess").hide();
+            $("#pSuccess").html('');
+
+            lgpla = getUrlVars()["lgpla"];
+            if (lgpla == "") lgpla = " ";
+            $('#lbllgpla').html(lgpla);
+            key = getUrlVars()["key"];
+            key_i = key.replace("ZMM005T_H_DMOVE", "ZMM005T_I_DMOVE");
+
+            objJson_h = jQuery.parseJSON(window.localStorage.getItem(key));
+
+            if (window.localStorage.getItem(key_i) != "")
+                objJson_i = jQuery.parseJSON(window.localStorage.getItem(key_i));
+
+            //表頭顯示1
+            $('#lblvbelnseqno').html(objJson_h[0].VBELN.replace(/^0+/, '') + "-" + objJson_h[0].SEQNO.substr(objJson_h[0].SEQNO.length - 2));
+            $('#lblposnr').html(objJson_h[0].POSNR.substr(objJson_h[0].POSNR.length - 2));
+            $('#lblmatnr').html(objJson_h[0].MATNR);
+            $('#lbllgort').html(objJson_h[0].LGORT);
+
+            //表頭顯示2
+            $('#lbllfimg').html(objJson_h[0].LFIMG);
+            $('#lblpnum').html(objJson_h[0].PNUM);
+            $('#lblpnum_c').html(objJson_h[0].PNUM_C);
+
+            //WEB
+            ReadFileString(key_i + ".txt", message1);
+
+
+        }
+
+        $(document).ready(function () {
+
+            $("#bc1").focus();
+
+            $('#bc1').keypress(function (e) {
+                var key = e.which;
+                if (key == 13)  // the enter key code
+                {
+                    $("#btnsubmit").click();
+                    return false;
+                }
+            });
+
+            $("#btnsubmit").click(function () {
+
+                //清除狀態
+                $("#page").css("background-color", "");
+                $("#pError").hide();
+                $("#pError").html('');
+                $("#pSuccess").hide();
+                $("#pSuccess").html('');
+
+                //var SERNR = $("#bc1").val().split("-");
+                var SERNR = $("#bc1").val();
+                var repeat_check = 0;
+                var pltno_check = 0;
+
+
+                $('#tbpllist tbody').find("th.a").each(function (index) {
+                    if (SERNR.trim() == $(this).text().trim().substr(0, 10).trim())
+                        repeat_check = 1;
+                });
+
+                //0.比對格式
+                if (SERNR.length != 10) {
+
+                    doPlay("error", uuid);
+
+                    $("#pError").show();
+                    $("#pError").html('條碼格式錯誤：' + SERNR);
+                    $("#page").css("background-color", "#edb8b8");
+                    updateall();
+                }
+
+                    //1. 比對重複
+                else if (repeat_check == 1) {
+
+                    //拆板多板確認
+                    var num_check = 0;
+
+                    $.each(objJson_i, function (k, value) {
+                        if (SERNR == value.PLTNO && value.ZSTS != 'P') {
+                            num_check = num_check + 1;
+                        }
+                    });
+
+                    if (num_check == 0) {
+
+                        doPlay("pass", uuid);
+
+                        $("#pError").show();
+                        $("#pError").html('板號重複：' + SERNR);
+                        $("#page").css("background-color", "#edb8b8");
+                        updateall();
+                    }
+                    else {
+                        //多板
+                        //alert('拆板重複開始');
+
+                        var check = "";
+
+                        $.each(objJson_i, function (k, value) {
+
+                            if (SERNR == value.PLTNO && value.ZSTS == 'P') {
+                                if (lgpla == value.LGPLA) {
+                                    //alert("同儲格拆板");
+                                    check = "Y";
+                                    return false;
+                                }
+                                if (lgpla != value.LGPLA) {
+                                    //alert("不同儲格拆板");
+                                    check = "N";
+                                    return false;
+                                }
+                            }
+
+                        });
+
+                        if (check == "Y") {
+                            $("#popupspltnoselect").popup("open");
+
+                            $("#sp_pltno").val(SERNR);
+
+                            $('#selspltno').empty();
+
+                            $.each(objJson_i, function (k, value) {
+
+                                if (SERNR == value.PLTNO && value.ZSTS != 'P') {
+                                    $("#selspltno").append($("<option></option>").attr("value", value.SPLTNO).text(value.SPLTNO + "(" + value.MENGE + ")"));
+                                }
+                            });
+
+                            $("#selspltno").selectmenu("refresh");
+                        }
+                        else {
+
+                            $("#popupspltnoselect_n").popup("open");
+
+                            $("#sp_pltno").val(SERNR);
+
+                            $('#selspltno_n').empty();
+
+                            $.each(objJson_i, function (k, value) {
+
+                                if (SERNR == value.PLTNO && value.ZSTS != 'P') {
+                                    $("#selspltno_n").append($("<option></option>").attr("value", value.SPLTNO).text(value.SPLTNO + "(" + value.MENGE + ")"));
+                                }
+                            });
+
+                            $("#selspltno_n").selectmenu("refresh");
+
+                        }
+                    }
+
+                }
+                    //2.比對&增加
+                else {
+                    $.each(objJson_i, function (k, value) {
+
+                        var li_str = "";
+                        var row_i = "";
+
+                        if (SERNR == value.PLTNO) {
+
+                            pltno_check = 1;
+
+                            //當板序號=00時，表示未拆板
+                            if (value.SPLTNO == "00") {
+                                if (lgpla == value.LGPLA) {
+
+                                    doPlay("pass", uuid);
+
+                                    //1. update ZSTS='P' time
+                                    this.ZSTS = 'P';
+                                    this.ZPTIME = new Date().yyyymmddhhMMss();
+                                    this.ZLGPLA_N = value.LGPLA
+                                    //2. save to localStorage
+                                    //window.localStorage.setItem(key_i, JSON.stringify(objJson_i));
+                                    //3. update all
+                                    updateall();
+
+                                }
+                                else {
+
+                                    doPlay("pass", uuid);
+
+                                    //$("#pError").show();
+                                    //$("#pError").html('板號：' + SERNR + '，在出貨清單中，但非本儲格：' + lgpla);
+                                    //$("#page").css("background-color", "#edb8b8");
+
+                                    $("#sp_vbeln").val(value.VBELN);
+                                    $("#sp_posnr").val(value.POSNR);
+                                    $("#sp_pltno").val(value.PLTNO);
+                                    $("#sp_spltno").val(value.SPLTNO);
+                                    $("#sp_matnr").val(value.MATNR);
+                                    $("#sp_werks").val(value.WERKS);
+                                    $("#sp_lgpla").val(value.LGPLA);
+
+                                    $("#popupconfirm").popup("open");
+                                }
+                            }
+                                //拆板多板時
+                            else {
+                                if (lgpla == value.LGPLA) {
+                                    //多板
+                                    //alert("拆板板");
+                                    $("#popupspltnoselect").popup("open");
+
+                                    $("#sp_pltno").val(SERNR);
+
+                                    $('#selspltno').empty();
+
+                                    $.each(objJson_i, function (k, value) {
+
+                                        if (SERNR == value.PLTNO && value.ZSTS != 'P') {
+                                            $("#selspltno").append($("<option></option>").attr("value", value.SPLTNO).text(value.SPLTNO + "(" + value.MENGE + ")"));
+                                        }
+                                    });
+
+                                    $("#selspltno").selectmenu("refresh");
+                                }
+                                else {
+
+                                    doPlay("pass", uuid);
+
+                                    //$("#pError").show();
+                                    //$("#pError").html('板號：' + SERNR + '，在出貨清單中，但非本儲格：' + lgpla);
+                                    //$("#page").css("background-color", "#edb8b8");
+
+                                    $("#sp_vbeln").val(value.VBELN);
+                                    $("#sp_posnr").val(value.POSNR);
+                                    $("#sp_pltno").val(value.PLTNO);
+                                    $("#sp_spltno").val(value.SPLTNO);
+                                    $("#sp_matnr").val(value.MATNR);
+                                    $("#sp_werks").val(value.WERKS);
+                                    $("#sp_lgpla").val(value.LGPLA);
+
+                                    $("#popupspltnoselect_n").popup("open");
+
+                                    $("#sp_pltno").val(SERNR);
+
+                                    $('#selspltno_n').empty();
+
+                                    $.each(objJson_i, function (k, value) {
+
+                                        if (SERNR == value.PLTNO && value.ZSTS != 'P') {
+                                            $("#selspltno_n").append($("<option></option>").attr("value", value.SPLTNO).text(value.SPLTNO + "(" + value.MENGE + ")"));
+                                        }
+                                    });
+
+                                    $("#selspltno_n").selectmenu("refresh");
+
+                                }
+
+                            }
+
+                            return false;
+
+
+
+                        }
+                        else {
+                            pltno_check = 0;
+                        }
+                    });
+
+                    if (pltno_check == 0) {
+
+                        doPlay("error", uuid);
+
+                        $("#pError").show();
+                        $("#pError").html('板號：' + SERNR + '，未在出貨清單中');
+                        $("#page").css("background-color", "#edb8b8");
+                        $("#bc1").val('');
+                        $("#bc1").focus();
+                    }
+                }
+
+            });
+
+            $("#btnCancel").click(function () {
+                alert("資料回存中!!請勿關閉視窗，或是回上一頁。");
+                WriteData(key_i + ".txt", JSON.stringify(objJson_i));
+            });
+
+            $("#btngoSplit").click(function () {
+
+                doPlay("pass", uuid);
+
+
+                if ($("#sp_menge").val() == $("#sp_new_menge").val())
+                    alert("數量未改變");
+                else {
+
+                    var vbeln = $("#sp_vbeln").val();
+                    var posnr = $("#sp_posnr").val();
+                    var pltno = $("#sp_pltno").val();
+                    var spltno = $("#sp_spltno").val();
+                    var matnr = $("#sp_matnr").val();
+                    var werks = $("#sp_werks").val();
+                    var menge = $("#sp_menge").val();
+                    var ntgew = $("#sp_ntgew").val();
+                    var new_menge = $("#sp_new_menge").val();
+                    var new_weight = $("#sp_new_menge").val() * $("#sp_ntgew").val();
+
+                    //清除狀態
+                    $("#page").css("background-color", "");
+                    $("#pError").hide();
+                    $("#pError").html('');
+                    $("#pSuccess").hide();
+                    $("#pSuccess").html('');
+
+
+                    $.each(objJson_i, function (k, value) {
+                        if (vbeln == value.VBELN && posnr == value.POSNR && pltno == value.PLTNO && spltno == value.SPLTNO && matnr == value.MATNR && werks == value.WERKS && value.ZSTS == 'P') {
+                            //1. update ZMENGE_N/WEIGHT_N
+                            this.ZMENGE_N = new_menge;
+                            this.WEIGHT_N = new_weight;
+                            // 2. save to localStorage
+                            //window.localStorage.setItem(key_i, JSON.stringify(objJson_i));
+                        }
+                    })
+                    //alert(JSON.stringify(objJson_i));
+                }
+                updateall();
+
+                $("#popupLogin").popup("close");
+
+            });
+
+            $("#right-panel").on("panelbeforeclose", function () {
+                updateall();
+            });
+
+
+        });
+
+
+        function goDel(vbeln, posnr, pltno, spltno, matnr, werks) {
+
+            doPlay("pass", uuid);
+
+            //清除狀態
+            $("#page").css("background-color", "");
+            $("#pError").hide();
+            $("#pError").html('');
+            $("#pSuccess").hide();
+            $("#pSuccess").html('');
+
+            $.each(objJson_i, function (k, value) {
+                if (vbeln == value.VBELN && posnr == value.POSNR && pltno == value.PLTNO && spltno == value.SPLTNO && matnr == value.MATNR && werks == value.WERKS && value.ZSTS == 'P') {
+                    //1. update
+                    this.ZSTS = '';
+                    this.ZPTIME = '';
+                    this.ZMENGE_N = '';
+                    this.WEIGHT_N = '';
+                    this.ZLGPLA_N = '';
+                    // 2. save to localStorage
+                    //window.localStorage.setItem(key_i, JSON.stringify(objJson_i));
+                }
+            })
+
+            updateall();
+
+        }
+
+        function popupSplit(vbeln, posnr, pltno, spltno, matnr, werks, menge, ntgew) {
+
+            var sp_index = "";
+
+            $('#tbpllist tbody').find("th.a").each(function (index) {
+                if (pltno + '(' + spltno + ')' == $(this).html().trim().substr(0, 14)) {
+                    sp_index = index;
+                    return false;
+                }
+            });
+
+            $("#popupLogin").popup("open");
+
+            $("#dynamic-slider-form").empty();
+            $("<input id=\"sp_new_menge\" type=\"number\" data-type=\"range\" min=\"1\" max=\"" + menge + "\" step=\"1\" value=\"" + menge + "\">")
+                .appendTo("#dynamic-slider-form")
+                .slider()
+                .textinput();
+
+            $("#sp_vbeln").val(vbeln);
+            $("#sp_posnr").val(posnr);
+            $("#sp_pltno").val(pltno);
+            $("#sp_spltno").val(spltno);
+            $("#sp_matnr").val(matnr);
+            $("#sp_werks").val(werks);
+            $("#sp_menge").val(menge);
+            $("#sp_ntgew").val(ntgew);
+            $("#sp_index").val(sp_index);
+        }
+
+        function pad(str, max) {
+            str = str.toString();
+            return str.length < max ? pad("0" + str, max) : str;
+        }
+
+        function mycomparator(a, b) {
+            return a.ZPTIME - b.ZPTIME;
+        }
+
+        function copypltno(pltno) {
+
+            doPlay("pass", uuid);
+
+            $("#bc1").val(pltno);
+            $("#bc1").focus();
+        }
+
+        function goDifflgplapick() {
+
+            //doPlay("pass",uuid);
+
+            //清除狀態
+            //$("#page").css("background-color", "");
+            //$("#pError").hide();
+            //$("#pError").html('');
+            //$("#pSuccess").hide();
+            //$("#pSuccess").html('');
+
+            var vbeln = $("#sp_vbeln").val();
+            var posnr = $("#sp_posnr").val();
+            var pltno = $("#sp_pltno").val();
+            var spltno = $("#sp_spltno").val();
+            var matnr = $("#sp_matnr").val();
+            var werks = $("#sp_werks").val();
+
+            $.each(objJson_i, function (k, value) {
+                if (vbeln == value.VBELN && posnr == value.POSNR && pltno == value.PLTNO && spltno == value.SPLTNO && matnr == value.MATNR && werks == value.WERKS) {
+                    //1. update ZLGPLA_N
+                    this.ZSTS = 'P';
+                    this.ZPTIME = new Date().yyyymmddhhMMss();
+                    this.ZLGPLA_N = lgpla;
+                    // 2. save to localStorage
+                    //window.localStorage.setItem(key_i, JSON.stringify(objJson_i));
+                }
+            })
+
+            $("#sp_vbeln").val('');
+            $("#sp_posnr").val('');
+            $("#sp_pltno").val('');
+            $("#sp_spltno").val('');
+            $("#sp_matnr").val('');
+            $("#sp_werks").val('');
+            $("#sp_lgpla").val('');
+
+            updateall();
+
+            $("#popupconfirm").popup("close");
+
+        }
+
+        function goDifflgplacancel() {
+
+            $("#bc1").val('');
+            $("#bc1").focus;
+
+            $("#popupconfirm").popup("close");
+
+        }
+
+        function gospltnoselectpick() {
+
+            $.each(objJson_i, function (k, value) {
+                if ($("#sp_pltno").val() == value.PLTNO && $("#selspltno").val() == value.SPLTNO) {
+                    //1. update ZLGPLA_N
+                    this.ZSTS = 'P';
+                    this.ZPTIME = new Date().yyyymmddhhMMss();
+                    this.ZLGPLA_N = value.LGPLA
+                    //2. save to localStorage
+                    //window.localStorage.setItem(key_i, JSON.stringify(objJson_i));
+
+                    return false;
+                }
+
+            })
+
+            updateall();
+
+            $("#popupspltnoselect").popup("close");
+
+        }
+
+        function gospltnoselectcancel() {
+
+            $("#bc1").val('');
+            $("#bc1").focus;
+
+            $("#sp_pltno").val('');
+
+            $("#popupspltnoselect").popup("close");
+
+        }
+
+        function gospltnoselectpick_n() {
+
+
+            $.each(objJson_i, function (k, value) {
+                if ($("#sp_pltno").val() == value.PLTNO && $("#selspltno_n").val() == value.SPLTNO) {
+                    //1. update ZLGPLA_N
+                    this.ZSTS = 'P';
+                    this.ZPTIME = new Date().yyyymmddhhMMss();
+                    this.ZLGPLA_N = lgpla
+                    //2. save to localStorage
+                    //window.localStorage.setItem(key_i, JSON.stringify(objJson_i));
+
+                    return false;
+                }
+
+            })
+
+            updateall();
+
+            $("#popupspltnoselect_n").popup("close");
+
+        }
+
+        function gospltnoselectcancel_n() {
+
+            $("#bc1").val('');
+            $("#bc1").focus;
+
+            $("#sp_pltno").val('');
+
+            $("#popupspltnoselect_n").popup("close");
+
+        }
+
+        function updateall() {
+
+            //alert(JSON.stringify(objJson_i));
+
+            //1. 重新計算重量/板數/零包(本儲格)+已撿板號顯示
+            $('#tbpllist tbody').empty();
+
+            p_weight = 0; //總重
+            p_pnum = 0; //總板數
+            p_pnum_c = 0; //總零包
+
+            //重新排序By PickTime
+            objJson_i = objJson_i.sort(mycomparator).reverse();
+
+            $.each(objJson_i, function (k, value) {
+                if (lgpla == value.ZLGPLA_N && value.ZSTS == 'P') {
+
+                    if (value.WEIGHT_N == '') {
+                        p_weight = p_weight + value.WEIGHT;
+
+                        var row_i;
+                        row_i += "<tr>";
+                        if (lgpla == value.LGPLA)
+                            row_i += "<th class=\"a\"><a href=\"#\" onclick='copypltno(\"" + value.PLTNO + "\")' >" + value.PLTNO + "(" + value.SPLTNO + ")</a><br>" + value.MATNR.substr(value.MATNR.indexOf("-") + 1, 1) + value.ZIDENT + " " + value.REMARK + "</th>";
+                        else
+                            row_i += "<th class=\"a\"><a href=\"#\" onclick='copypltno(\"" + value.PLTNO + "\")' >" + value.PLTNO + "(" + value.SPLTNO + ")</a><br>" + value.MATNR.substr(value.MATNR.indexOf("-") + 1, 1) + value.ZIDENT + " " + value.REMARK + "<br/>原儲格：" + value.LGPLA + "</th>";
+                        row_i += "<th>" + value.MENGE + "</th>";
+                        row_i += "<th>" + value.WEIGHT + "</th>";
+                        row_i += "<th style=\"padding:3px\"><a href=\"#\" onclick='goDel(\"" + value.VBELN + "\",\"" + value.POSNR + "\",\"" + value.PLTNO + "\",\"" + value.SPLTNO + "\",\"" + value.MATNR + "\",\"" + value.WERKS + "\")' class=\"ui-btn\" style=\"padding:10px 8px;background-color:#E5847D;color:black;text-shadow:0 0 0;\">刪除</a></th>";
+                        row_i += "<th style=\"padding:3px\"><a href=\"#\" onclick='popupSplit(\"" + value.VBELN + "\",\"" + value.POSNR + "\",\"" + value.PLTNO + "\",\"" + value.SPLTNO + "\",\"" + value.MATNR + "\",\"" + value.WERKS + "\",\"" + value.MENGE + "\",\"" + value.NTGEW + "\")' class=\"ui-btn\" style=\"padding:10px 8px;background-color:#00BCD4;color:black;text-shadow:0 0 0;\">拆板</a></th>";
+                        row_i += '</tr>';
+                        $('#tbpllist tbody').append(row_i);
+
+                        if (value.SPLTNO == '00') {
+                            p_pnum = p_pnum + 1;
+                        }
+                        else {
+                            p_pnum_c = parseInt(p_pnum_c) + parseInt(value.MENGE);
+                        }
+                    }
+                    else {
+                        p_weight = p_weight + value.WEIGHT_N;
+
+                        var row_i;
+                        row_i += "<tr>";
+                        if (lgpla == value.LGPLA)
+                            row_i += "<th class=\"a\"><a href=\"#\" onclick='copypltno(\"" + value.PLTNO + "\")' >" + value.PLTNO + "(" + value.SPLTNO + ")</a><br>" + value.MATNR.substr(value.MATNR.indexOf("-") + 1, 1) + value.ZIDENT + " " + value.REMARK + "</th>";
+                        else
+                            row_i += "<th class=\"a\"><a href=\"#\" onclick='copypltno(\"" + value.PLTNO + "\")' >" + value.PLTNO + "(" + value.SPLTNO + ")</a><br>" + value.MATNR.substr(value.MATNR.indexOf("-") + 1, 1) + value.ZIDENT + " " + value.REMARK + "<br/>原儲格：" + value.LGPLA + "</th>";
+                        row_i += "<th>" + value.ZMENGE_N + "</th>";
+                        row_i += "<th>" + value.WEIGHT_N + "</th>";
+                        row_i += "<th style=\"padding:3px\"><a href=\"#\" onclick='goDel(\"" + value.VBELN + "\",\"" + value.POSNR + "\",\"" + value.PLTNO + "\",\"" + value.SPLTNO + "\",\"" + value.MATNR + "\",\"" + value.WERKS + "\")' class=\"ui-btn\" style=\"padding:10px 8px;background-color:#E5847D;color:black;text-shadow:0 0 0;\">刪除</a></th>";
+                        row_i += "<th style=\"padding:3px\">已拆板</th>";
+                        row_i += '</tr>';
+                        $('#tbpllist tbody').append(row_i);
+
+                        p_pnum_c = parseInt(p_pnum_c) + parseInt(value.ZMENGE_N);
+                    }
+
+                }
+            });
+
+            $("#lblp_weight").html(p_weight);
+            $("#lblp_pnum").html(p_pnum);
+            $("#lblp_pnum_c").html(p_pnum_c);
+
+            //2. 重新計算重量/板數/零包(本訂單)
+            tp_weight = 0; //總重
+            tp_pnum = 0; //總板數
+            tp_pnum_c = 0; //總零包
+
+            $.each(objJson_i, function (k, value) {
+                if (value.ZSTS == 'P') {
+                    if (value.WEIGHT_N == '') {
+                        tp_weight = tp_weight + value.WEIGHT;
+                        if (value.SPLTNO == '00') {
+                            tp_pnum = tp_pnum + 1;
+                        }
+                        else {
+                            tp_pnum_c = parseInt(tp_pnum_c) + parseInt(value.MENGE);
+                        }
+                    }
+                    else {
+                        tp_weight = tp_weight + value.WEIGHT_N;
+                        tp_pnum_c = parseInt(tp_pnum_c) + parseInt(value.ZMENGE_N);
+                    }
+                }
+            });
+            $("#lbltp_weight").html(tp_weight);
+            $("#lbltp_pnum").html(tp_pnum);
+            $("#lbltp_pnum_c").html(tp_pnum_c);
+
+            //if (parseInt($("#lbltp_weight").html()) >= parseInt($("#lbllfimg").html())) {
+
+            //    $("#pSuccess").show();
+            //    $("#pSuccess").html('檢貨數量已達成');
+            //    $("#page").css("background-color", "#89D4EF");
+
+            //    doPlay("pass1",uuid);
+
+            //}
+
+            //3.重新計算本機出貨單主檔G1 By 所有批
+            var objJson_g1 = _.chain(objJson_i)
+                .groupBy("CHARG")
+                .map(function (value, key) {
+                    return {
+                        CHARG: key
+                    }
+                })
+                .value();
+
+            var row_g;
+
+            $.each(objJson_g1, function (k, value) {
+
+                var pnum = 0;
+                var pnum_c = 0;
+                var p_pnum = 0;
+                var p_pnum_c = 0;
+                var zident;
+                var range_array = [];
+
+                $.each(objJson_i, function (k, v) {
+
+                    if (value.CHARG == v.CHARG) {
+                        zident = v.ZIDENT;
+
+                        range_array.push(v.PLTNO.substr(6, 4))
+
+                        if (v.SPLTNO == '00') {
+                            pnum = pnum + 1;
+                        }
+                        else {
+                            pnum_c = pnum_c + v.MENGE;
+                        }
+                    }
+
+                    if (value.CHARG == v.CHARG && v.ZSTS == 'P') {
+
+                        if (v.SPLTNO == '00') {
+                            p_pnum = p_pnum + 1;
+                        }
+                        else {
+                            p_pnum_c = p_pnum_c + v.MENGE;
+                        }
+                    }
+                })
+                row_g += "<tr>";
+                row_g += "<th>" + value.CHARG + "(" + zident + ")<br>";
+                row_g += pad(Math.min.apply(Math, range_array), 4) + " - " + pad(Math.max.apply(Math, range_array), 4) + "</th>";
+                row_g += "<th style=\"color: #AA000A\"><span style=\"color: #1BA261\">" + p_pnum + "</span> / " + pnum + "</th>";
+                row_g += "<th style=\"color: #AA000A\"><span style=\"color: #1BA261\">" + p_pnum_c + "</span> / " + pnum_c + "</th>";
+                row_g += '</tr>';
+            });
+
+            $('#tbdlvg1 tbody').empty();
+            $('#tbdlvg1 tbody').append(row_g);
+
+            $("#bc1").val('');
+
+
+            setTimeout(function () {
+                $("#bc1").focus();
+                setTimeout(function () {
+                    $("#bc1").setAttribute('style', 'display:none;');
+                }, 50);
+            }, 50);
+
+        }
+
+        function WriteData(filename, str) {
+            if (uuid == "123456789012345") {
+
+                window.localStorage.setItem(key_i, str);
+                alert("暫存成功，頁面將前往 - 調撥出庫作業(PDA)");
+                window.location.href = "pick_dmove_S1.html?key=" + key;
+            }
+            else {
+                window.resolveLocalFileSystemURL(cordova.file.dataDirectory, function (dir) {
+                    dir.getFile(filename, { create: true }, function (file) {
+
+                        file.createWriter(function (fileWriter) {
+                            fileWriter.write(str);
+                            alert("暫存成功，頁面將前往 - 調撥出庫作業(PDA)");
+                            window.location.href = "pick_dmove_S1.html?key=" + key;
+                        }, function (ex) {
+                            alert(ex.target.error.code, null, 'Ｅrror', 'OK');
+
+                        });
+                    });
+                });
+            }
+        }
+
+        function ReadFileString(filename, succFunc) {
+            if (uuid == "123456789012345") {
+                if (window.localStorage.getItem(key_i) != "")
+                    objJson_i = jQuery.parseJSON(window.localStorage.getItem(key_i));
+
+                updateall();
+                alert("比對檔共 " + objJson_i.length + " 筆，請開始");
+            }
+            else {
+                window.resolveLocalFileSystemURL(cordova.file.dataDirectory, function (dir) {
+                    dir.getFile(filename, { create: true }, function (fileObject) {
+                        fileObject.file(function (file) {
+                            var reader = new FileReader();
+                            reader.onloadend = function (e) {
+                                //將暫存檔存至本頁陣列中。
+                                objJson_i = jQuery.parseJSON(this.result);
+                                updateall();
+                                alert("比對檔共 " + objJson_i.length + " 筆，請開始");
+                            };
+                            reader.readAsText(file);
+                        }, function (ex) {
+                            alert(ex.target.error.code, null, 'Ｅrror', 'OK');
+
+                        });
+                    });
+                });
+            }
+        }
+
+        function message1(str) {
+
+            alert(str, null, 'Info', 'OK');
+        }
+
+        function onBackKeyDown() {
+            alert("資料回存中!!請勿關閉視窗，或是回上一頁。");
+            WriteData(key_i + ".txt", JSON.stringify(objJson_i));
+        }
+
+    </script>
+
+</head>
+<body onload="onLoad()">
+    <div data-role="page" class="jqm-demos" id="page">
+
+        <div data-role="header" class="jqm-header">
+            <h2><a href="../" title="LCY Mobile">
+                <img src="img/jquery-logo_new.png" alt="LCY Mobile" /></a></h2>
+            <a href="#" class="jqm-navmenu-link ui-btn ui-btn-icon-notext ui-corner-all ui-icon-bars ui-nodisc-icon ui-alt-icon ui-btn-left">Menu</a>
+            <a href="#right-panel" class="ui-btn ui-btn-icon-notext ui-corner-all ui-icon-grid ui-nodisc-icon ui-alt-icon">Charg Info</a>
+        </div>
+        <!-- /header -->
+
+        <div role="main" class="ui-content jqm-content" style="border: 0px solid red; padding: 5px 5px 5px 5px;">
+
+            <div>
+                <div class="jqm-block-content" style="margin: 0px; padding: 0px;">
+                    <h3 style="margin-bottom: 0px;">調撥單撿貨中(PDA)</h3>
+                    <table data-role="table" id="tbdlvh1" data-mode="columntoggle" class="ui-responsive table-stroke" style="font-size: 16px; padding: 0px; display: none;">
+                        <thead style="padding: 0px; line-height: 0px; font-size: 12px;">
+                            <tr>
+                                <th>訂單</th>
+                                <th>項次</th>
+                                <th>產品</th>
+                                <th>倉別</th>
+                            </tr>
+                        </thead>
+                        <tbody style="padding: 0px; color: #0C608C; line-height: 0px;">
+                            <tr>
+                                <th><span id="lblvbelnseqno"></span></th>
+                                <th><span id="lblposnr"></span></th>
+                                <th><span id="lblmatnr"></span></th>
+                                <th style="font-size: 20px; color: #1BA261;"><span id="lbllgort"></span></th>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <table data-role="table" id="tbdlvh2" data-mode="columntoggle" class="ui-responsive table-stroke" style="font-size: 16px; padding: 0px;">
+                        <thead style="padding: 0px; line-height: 0px; font-size: 12px;">
+                            <tr>
+                                <th>訂單數量</th>
+                                <th>訂單板數</th>
+                                <th>訂單零包</th>
+                            </tr>
+                        </thead>
+                        <tbody style="padding: 0px; color: #0C608C; line-height: 0px;">
+                            <tr>
+                                <th style="color: #AA000A"><span style="color: #1BA261" id="lbltp_weight"></span>/ <span id="lbllfimg"></span></th>
+                                <th style="color: #AA000A"><span style="color: #1BA261" id="lbltp_pnum"></span>/ <span id="lblpnum"></span></th>
+                                <th style="color: #AA000A"><span style="color: #1BA261" id="lbltp_pnum_c"></span>/ <span id="lblpnum_c"></span></th>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <table data-role="table" id="tbdlvh3" data-mode="columntoggle" class="ui-responsive table-stroke" style="font-size: 16px; padding: 0px;">
+                        <thead style="padding: 0px; font-size: 12px;">
+                            <tr>
+                                <th>儲格</th>
+                                <th>已撿數量</th>
+                                <th>已撿板數</th>
+                                <th>已撿零包</th>
+                            </tr>
+                        </thead>
+                        <tbody style="padding: 0px; color: #0C608C;">
+                            <tr style="color: #1BA261">
+                                <th style="font-size: 20px; color: #176994"><span id="lbllgpla"></span></th>
+                                <th><span id="lblp_weight"></span></th>
+                                <th><span id="lblp_pnum"></span></th>
+                                <th><span id="lblp_pnum_c"></span></th>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <label for="search">掃描或直接輸入板號：</label>
+                <input name="password" id="bc1" type="search" placeholder="掃描或直接輸入板號" value="">
+                <a href="#" class="ui-btn" id="btnsubmit" style="background-color: #71BE4E; color: white; font-weight: 300; display: none;">送出</a>
+                <a href="#" data-ajax="false" class="ui-btn" id="btnCancel" style="background-color: #808080; color: white; font-weight: 100">回儲格選擇</a>
+
+
+                <span id="pError" class="blink" style="color: red; font-size: 24px; font-weight: 600; display: none;"></span>
+                <br />
+                <span id="pSuccess" class="blink" style="color: #2C9000; font-size: 24px; font-weight: 600; display: none;"></span>
+
+                <table data-role="table" id="tbpllist" data-mode="columntoggle" class="ui-responsive table-stroke" style="font-size: 16px; padding: 0px;">
+                    <thead style="padding: 0px;">
+                        <tr>
+                            <th>板號(序號)<br>
+                                識別碼-備註</th>
+                            <th>包數</th>
+                            <th>重量</th>
+                            <th>刪除</th>
+                            <th>拆板</th>
+                        </tr>
+                    </thead>
+                    <tbody style="padding: 0px; color: #0C608C;"></tbody>
+                </table>
+
+
+
+            </div>
+            <div>
+            </div>
+
+        </div>
+
+        <div data-role="panel" class="jqm-navmenu-panel" data-position="left" data-display="overlay" data-theme="a" id="left-panel">
+            <ul class="jqm-list ui-alt-icon ui-nodisc-icon">
+                <li data-role="" data-enhanced="true" data-collapsed-icon="carat-d" data-expanded-icon="carat-u"
+                    data-iconpos="right" data-inset="false" class="ui-collapsible ui-collapsible-themed-content ui-collapsible-collapsed">
+                    <h3 class="ui-collapsible-heading">
+                        <a href="index.html" data-ajax="false" class="ui-btn">LCY Mobile - HZ<span class="ui-collapsible-heading-status"> click to expand contents</span>
+                        </a>
+                        <a href="#" data-ajax="false" class="ui-btn">環境/版本：<span id="lblenv"></span></a>
+                        <a href="#" data-ajax="false" class="ui-btn">裝置：<span id="lbluuid"></span></a>
+                    </h3>
+                    <div class="ui-collapsible-content ui-body-inherit" aria-hidden="true">
+                        <ul id="ulleftlist">
+                        </ul>
+                    </div>
+                </li>
+            </ul>
+        </div>
+        <!-- / left panel -->
+        <div data-role="panel" class="jqm-search-panel" data-position="right" data-display="overlay" data-theme="a" id="right-panel">
+            <div class="jqm-search">
+                <ul class="jqm-list">
+                    <li>
+                        <table data-role="table" id="tbdlvg1" data-mode="columntoggle" class="ui-responsive table-stroke" style="font-size: 16px;">
+                            <thead>
+                                <tr style="color: #0C608C">
+                                    <th>批次(ID) / 板區間</th>
+                                    <th>板數</th>
+                                    <th>零包</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            </tbody>
+                        </table>
+                    </li>
+
+                </ul>
+            </div>
+        </div>
+        <!-- / right panel -->
+
+
+        <div data-role="popup" id="popupconfirm" data-dismissible="false" style="max-width: 400px;">
+            <div data-role="header">
+            </div>
+            <div role="main" class="ui-content">
+                <h3 class="ui-title">非本儲格，使否撿貨?</h3>
+                <a href="#" onclick="goDifflgplacancel()" class="ui-btn ui-corner-all ui-shadow ui-btn-inline">取消</a>
+                <a href="#" onclick="goDifflgplapick()" class="ui-btn ui-corner-all ui-shadow ui-btn-inline">撿貨</a>
+            </div>
+        </div>
+        <!-- / popup window -->
+
+        <div data-role="popup" id="popupspltnoselect" data-dismissible="false" style="max-width: 400px;">
+            <div data-role="header">
+            </div>
+            <div role="main" class="ui-content">
+                <div class="ui-field-contain">
+                    <label for="select-native-1">本板含多個拆板，請選擇一板序號：</label>
+                    <select name="select-native-1" id="selspltno">
+                    </select>
+                </div>
+
+                <a href="#" onclick="gospltnoselectcancel()" class="ui-btn ui-corner-all ui-shadow ui-btn-inline">取消</a>
+                <a href="#" onclick="gospltnoselectpick()" class="ui-btn ui-corner-all ui-shadow ui-btn-inline">撿貨</a>
+            </div>
+        </div>
+        <!-- / popup window -->
+
+        <div data-role="popup" id="popupspltnoselect_n" data-dismissible="false" style="max-width: 400px;">
+            <div data-role="header">
+            </div>
+            <div role="main" class="ui-content">
+                <div class="ui-field-contain">
+                    <label for="select-native-1">非本儲格，且本板含多個拆板，請選擇一板序號：</label>
+                    <select name="select-native-1" id="selspltno_n">
+                    </select>
+                </div>
+
+                <a href="#" onclick="gospltnoselectcancel_n()" class="ui-btn ui-corner-all ui-shadow ui-btn-inline">取消</a>
+                <a href="#" onclick="gospltnoselectpick_n()" class="ui-btn ui-corner-all ui-shadow ui-btn-inline">撿貨</a>
+            </div>
+        </div>
+        <!-- / popup window -->
+
+        <div class="ui-corner-all" id="popupLogin" data-role="popup" data-theme="a" style="width: 300px; height: 200px; padding: 20px 5px;">
+            <h2 style="color: #156691">請調整包數</h2>
+            <label for="dynamic-slider-form">包數:</label>
+            <div id="dynamic-slider-form"></div>
+            <br />
+            <a href="#" class="ui-btn ui-btn-b" id="btngoSplit">調整</a>
+        </div>
+        <!-- / popup window -->
+
+        <input type="hidden" name="sp_vbeln" id="sp_vbeln" value="">
+        <input type="hidden" name="sp_posnr" id="sp_posnr" value="">
+        <input type="hidden" name="sp_pltno" id="sp_pltno" value="">
+        <input type="hidden" name="sp_spltno" id="sp_spltno" value="">
+        <input type="hidden" name="sp_matnr" id="sp_matnr" value="">
+        <input type="hidden" name="sp_werks" id="sp_werks" value="">
+        <input type="hidden" name="sp_menge" id="sp_menge" value="">
+        <input type="hidden" name="sp_ntgew" id="sp_ntgew" value="">
+        <input type="hidden" name="sp_index" id="sp_index" value="">
+        <input type="hidden" name="sp_lgpla" id="sp_lgpla" value="">
+        <!-- / hidden input -->
+
+        <!--<div data-role="footer" data-position="fixed" data-tap-toggle="false" class="jqm-footer">
+            <p>Desing By LCY IT Department</p>
+        </div>-->
+        <!-- /footer -->
+
+
+    </div>
+
+
+
+</body>
+</html>
